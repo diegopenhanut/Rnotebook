@@ -46,7 +46,7 @@ compInd <- merge(x = consumo, y = compCentesimal, by.x = c("COD_ITEM", "COD_PREP
 
 View(compInd[1:10,])
 
-df <- data.frame(data.frame(unlist(compInd[1:10,]), nrow=67, byrow=T))
+#df <- data.frame(data.frame(unlist(compInd[1:10,]), nrow=67, byrow=T))
 
 #require("plyr")
 
@@ -55,5 +55,43 @@ compInd<-as.data.frame(compInd)
 
 #' basic math
 
-as.numeric(compInd$QTD_FINAL)/100*as.numeric(compInd$ENERGIA..kcal.)
-lala<-as.vector(compInd[1:10,31:length(compInd)])*as.numeric(compInd$QTD_FINAL)
+compInd$ENERGIA..kcal.<-as.numeric(compInd$QTD_FINAL)/100*as.numeric(compInd$ENERGIA..kcal.)
+compInd$PROTEêNA..g.<-as.numeric(compInd$QTD_FINAL)/100*as.numeric(compInd$PROTEêNA..g.)
+compInd$LIPêDEOS.TOTAIS..g.<-as.numeric(compInd$QTD_FINAL)/100*as.numeric(compInd$LIPêDEOS.TOTAIS..g.)
+compInd$CARBOIDRATO..g.<-as.numeric(compInd$QTD_FINAL)/100*as.numeric(compInd$CARBOIDRATO..g.)
+
+#' check the number of persons
+length(levels(as.factor(paste(compInd$COD_UF, compInd$NUM_SEQ, compInd$NUM_DV, compInd$COD_DOMC,
+  compInd$NUM_UC, compInd$NUM_INFORMANTE, sep = " - "))))
+
+#' add a ID field
+compInd$ID <- as.factor(paste(compInd$COD_UF, compInd$NUM_SEQ, compInd$NUM_DV, compInd$COD_DOMC,
+  compInd$NUM_UC, compInd$NUM_INFORMANTE, sep = " - "))
+
+compInd$ID <- as.numeric(compInd$ID)
+#max(compInd$ID)
+#summary(compInd$ID)
+
+firstMacro<-compInd[,c(1:34, length(compInd) )]
+View(firstMacro[1:10,])
+
+#' num do quadro = 71 primeiro dia, 72 seagundo dia.
+myData<-aggregate(x = firstMacro[,31:35] , by=list( firstMacro$COD_UF, firstMacro$ID, firstMacro$NUM_QUADRO), FUN="sum",  na.rm=TRUE)
+View(myData)
+require("ggplot2")
+
+qplot( y = myData$ENERGIA..kcal., x=paste(myData$Group.1,myData$Group.3, sep = ", dia "),
+ geom = "boxplot", main="Energia", ylab="Kcal")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+qplot( y = myData$PROTEêNA..g., x=paste(myData$Group.1,myData$Group.3, sep = ", dia "),
+       geom = "boxplot", main="Proteína", ylab="g")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+qplot( y = myData$LIPêDEOS.TOTAIS..g., x=paste(myData$Group.1,myData$Group.3, sep = ", dia "),
+       geom = "boxplot", main="Lipídeos", ylab="g")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+qplot( y = myData$CARBOIDRATO..g., x=paste(myData$Group.1,myData$Group.3, sep = ", dia "),
+       geom = "boxplot", main = "Carboidratos", ylab="g")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
