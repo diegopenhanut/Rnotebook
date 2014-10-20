@@ -1,11 +1,36 @@
+#' ---
+#' title: "Consumo Alimentar e dataSus"
+#' author: Emanuel Diego S Penha
+#' date: Oct 19, 2014
+#' output:
+#' html_document:
+#' toc: true
+#' pdf_document:
+#'   toc: true
+#' ---
+
+#' turn on cache
+knitr::opts_chunk$set(cache=TRUE)
+#' 
+
+#' ler tabelas do datasus
+datasusEstFem<-read.table(file = "data/datasusEstFem.txt",
+  sep = "\t", header = TRUE, fileEncoding =  "latin1", na.strings="-")
+datasusEstMas<-read.table(file = "data/datasusEstMas.txt",
+  sep = "\t", header = TRUE, fileEncoding =  "latin1", na.strings="-")
+datasusRegFem<-read.table(file = "data/datasusRegFem.txt",
+  sep = "\t", header = TRUE, fileEncoding =  "latin1", na.strings="-")
+datasusRegMas<-read.table(file = "data/datasusRegMas.txt",
+  sep = "\t", header = TRUE, fileEncoding =  "latin1", na.strings="-")
+
 #' 1 #### dados da Ilana
-library("foreign")
-myData <- read.spss("~/Dropbox/POF Ilana/alimentogrnovo.sav")
-summary(myData)
-summary(myData$LOCAL)
-summary(myData$QTD_IMPUT)
-summary(myData$uf)
-summary(myData$idadeano)
+#library("foreign")
+#myData <- read.spss("~/Dropbox/POF Ilana/alimentogrnovo.sav")
+#summary(myData)
+#summary(myData$LOCAL)
+#summary(myData$QTD_IMPUT)
+#summary(myData$uf)
+#summary(myData$idadeano)
 
 #' #### 1. carregar pacote com dicionários
 require("dicionariosIBGE")
@@ -14,7 +39,7 @@ data(dicPOF2008.2009)
 
 #' #### 2. manipular dados
 
-# cria lista com rotulos
+# criar lista com rotulos
 rotulos <- split(x = rot16pof2008.2009,f = rot16pof2008.2009$cod)
 #ler microdados
 consumo <- read.fwf("~/Google Drive/pof - aalane/Dados/T_CONSUMO_S.txt", widths = dic16pof2008.2009$tamanho)
@@ -23,6 +48,10 @@ colnames (consumo)<-dic16pof2008.2009$cod
 # ver microdados com nomes de colunas
 View (consumo[1:10,])
 
+#' dados morador
+morador <- read.fwf("~/Google Drive/pof - aalane/Dados/T_MORADOR_S.txt", widths = dic2pof2008.2009$tamanho)
+colnames(morador)<-dic2pof2008.2009$cod
+View(morador[1:10,])
 #Vtest <-merge(x = consumo, y = rotulos$COD_UF, by.x = "COD_UF" ,by.y = "valor")
 
 consumo$COD_UF<-apply(consumo, 1 , function(aa) rotulos$COD_UF$rotulo[match (aa["COD_UF"], rotulos$COD_UF$valor)])
@@ -95,3 +124,5 @@ qplot( y = myData$LIPêDEOS.TOTAIS..g., x=paste(myData$Group.1,myData$Group.3, s
 qplot( y = myData$CARBOIDRATO..g., x=paste(myData$Group.1,myData$Group.3, sep = ", dia "),
        geom = "boxplot", main = "Carboidratos", ylab="g")+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+hist(myData$CARBOIDRATO..g.)
