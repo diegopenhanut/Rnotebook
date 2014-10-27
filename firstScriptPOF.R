@@ -13,116 +13,118 @@
 knitr::opts_chunk$set(cache=TRUE)
 #' 
 
-#' ler tabelas do datasus
+#' #### 1. ler tabelas do datasus
 datasusEstFem<-read.table(file = "data/datasusEstFem.txt",
-  sep = "\t", header = TRUE, fileEncoding =  "latin1", na.strings="-")
+  sep = "\t", header = TRUE, fileEncoding =  "mac", na.strings="-")
 datasusEstMas<-read.table(file = "data/datasusEstMas.txt",
-  sep = "\t", header = TRUE, fileEncoding =  "latin1", na.strings="-")
+  sep = "\t", header = TRUE, fileEncoding =  "mac", na.strings="-")
 datasusRegFem<-read.table(file = "data/datasusRegFem.txt",
-  sep = "\t", header = TRUE, fileEncoding =  "latin1", na.strings="-")
+  sep = "\t", header = TRUE, fileEncoding =  "mac", na.strings="-")
 datasusRegMas<-read.table(file = "data/datasusRegMas.txt",
-  sep = "\t", header = TRUE, fileEncoding =  "latin1", na.strings="-")
+  sep = "\t", header = TRUE, fileEncoding =  "mac", na.strings="-")
 
-#' 1 #### dados da Ilana
-#library("foreign")
-#myData <- read.spss("~/Dropbox/POF Ilana/alimentogrnovo.sav")
-#summary(myData)
-#summary(myData$LOCAL)
-#summary(myData$QTD_IMPUT)
-#summary(myData$uf)
-#summary(myData$idadeano)
-
-#' #### 1. carregar pacote com dicionários
+#' #### 2. carregar pacote com dicionários
 require("dicionariosIBGE")
 data(package = "dicionariosIBGE")
 data(dicPOF2008.2009)
 
-#' #### 2. manipular dados
-
-# criar lista com rotulos
-rotulos <- split(x = rot16pof2008.2009,f = rot16pof2008.2009$cod)
-#ler microdados
-consumo <- read.fwf("~/Google Drive/pof - aalane/Dados/T_CONSUMO_S.txt", widths = dic16pof2008.2009$tamanho)
-# renomar colunas
-colnames (consumo)<-dic16pof2008.2009$cod
-# ver microdados com nomes de colunas
-View (consumo[1:10,])
-
-#' dados morador
+#' #### 3. carregar dados de morador
 morador <- read.fwf("~/Google Drive/pof - aalane/Dados/T_MORADOR_S.txt", widths = dic2pof2008.2009$tamanho)
 colnames(morador)<-dic2pof2008.2009$cod
-View(morador[1:10,])
-#Vtest <-merge(x = consumo, y = rotulos$COD_UF, by.x = "COD_UF" ,by.y = "valor")
+head(morador)
 
-consumo$COD_UF<-apply(consumo, 1 , function(aa) rotulos$COD_UF$rotulo[match (aa["COD_UF"], rotulos$COD_UF$valor)])
-consumo$COD_UF<-as.factor(consumo$COD_UF)
+#' #### 4. formatar dados de consumo
 
-#consumo$COD_ITEM<-apply(consumo, 1 , function(aa) rotulos$COD_ITEM$rotulo[match (aa["COD_ITEM"], rotulos$COD_ITEM$valor)])
-#consumo$COD_ITEM<-as.factor(consumo$COD_ITEM)
+#' criar lista com rotulos
+rotulos <- split(x = rot16pof2008.2009,f = rot16pof2008.2009$cod)
+#' ler microdados
+consumo <- read.fwf("~/Google Drive/pof - aalane/Dados/T_CONSUMO_S.txt", widths = dic16pof2008.2009$tamanho)
+#' renomar colunas
+colnames (consumo)<-dic16pof2008.2009$cod
+#' ver microdados com nomes de colunas
+head (consumo)
 
-#' save first 1000 lines
-write.csv(consumo[1:1000,], "~/Google Drive/pof - aalane/POF-R/consumo-1000linhas.csv")
+#' substituir COD_UF pelo rótulo
+#consumo$COD_UF<-apply(consumo, 1 , function(aa) rotulos$COD_UF$rotulo[match (aa["COD_UF"], rotulos$COD_UF$valor)])
+#consumo$COD_UF<-as.factor(consumo$COD_UF)
 
+#' #### 5. carregar tabela de composição usada na POF
 #' tabela completa URL
 #' ftp://ftp.ibge.gov.br/Orcamentos_Familiares/Pesquisa_de_Orcamentos_Familiares_2008_2009/Tabelas_de_Composicao_Nutricional_dos_Alimentos_Consumidos_no_Brasil/tabelacompleta.zip
 compCentesimal<-read.table(file = "~/Google Drive/pof - aalane/tabelacompleta.txt",
-  skip = 3, sep = "\t", header = TRUE, fileEncoding =  "latin1", na.strings="-")
+  skip = 3, sep = "\t", header = TRUE, fileEncoding =  "mac", na.strings="-")
 #' drop blank fields
+summary(compCentesimal)
 compCentesimal<-compCentesimal[,1:43]
-#' merge
+
+#' #### 6. Merge composição e consumo para obter insgestão de nutrientes.
 compInd <- merge(x = consumo, y = compCentesimal, by.x = c("COD_ITEM", "COD_PREPARACAO"),
-  by.y = c("CîDIGO.DO.ALIMENTO", "CîDIGO............DA.PREPARA.ÌO"), all.x = TRUE, all.y = FALSE)
+  by.y = c("CÓDIGO.DO.ALIMENTO", "CÓDIGO............DA.PREPARAÇÃO"), all.x = TRUE, all.y = FALSE)
 
-View(compInd[1:10,])
-
-#df <- data.frame(data.frame(unlist(compInd[1:10,]), nrow=67, byrow=T))
-
-#require("plyr")
-
-
+head (compInd)
 compInd<-as.data.frame(compInd)
 
-#' basic math
+#' regra de 3 para obter ingestão por indivíduo/dia para macronutrientes. 
+regraDeTres<-function(numeratorList, denominator ){
+  lapply(numeratorList, function(a){
+    as.numeric(denominator)/100*as.numeric(a)
+  })
+}
+#' ver nomes dos itens na lista
+names(compInd)
+#' usar somente as variaveis alimentares
+compInd[,31:67]<-regraDeTres(compInd[,31:67], compInd$QTD_FINAL)
 
-compInd$ENERGIA..kcal.<-as.numeric(compInd$QTD_FINAL)/100*as.numeric(compInd$ENERGIA..kcal.)
-compInd$PROTEêNA..g.<-as.numeric(compInd$QTD_FINAL)/100*as.numeric(compInd$PROTEêNA..g.)
-compInd$LIPêDEOS.TOTAIS..g.<-as.numeric(compInd$QTD_FINAL)/100*as.numeric(compInd$LIPêDEOS.TOTAIS..g.)
-compInd$CARBOIDRATO..g.<-as.numeric(compInd$QTD_FINAL)/100*as.numeric(compInd$CARBOIDRATO..g.)
-
-#' check the number of persons
-length(levels(as.factor(paste(compInd$COD_UF, compInd$NUM_SEQ, compInd$NUM_DV, compInd$COD_DOMC,
-  compInd$NUM_UC, compInd$NUM_INFORMANTE, sep = " - "))))
+#' verificar o número de pessoas
+length(levels(as.factor(paste(compInd$COD_UF, compInd$NUM_SEQ, compInd$NUM_DV, 
+  compInd$COD_DOMC, compInd$NUM_UC, compInd$NUM_INFORMANTE, sep = " - "))))
 
 #' add a ID field
-compInd$ID <- as.factor(paste(compInd$COD_UF, compInd$NUM_SEQ, compInd$NUM_DV, compInd$COD_DOMC,
-  compInd$NUM_UC, compInd$NUM_INFORMANTE, sep = " - "))
+compInd$ID <- as.factor(paste(compInd$COD_UF, compInd$NUM_SEQ, compInd$NUM_DV,
+  compInd$COD_DOMC, compInd$NUM_UC, compInd$NUM_INFORMANTE, sep = " - "))
 
-compInd$ID <- as.numeric(compInd$ID)
-#max(compInd$ID)
-#summary(compInd$ID)
+head(compInd$ID)
+#' #### 7 merge com os dados de moradores
+morador$ID <- as.factor(paste(morador$COD_UF, morador$NUM_SEQ, morador$NUM_DV,
+  morador$COD_DOMC, morador$NUM_UC, morador$NUM_INFORMANTE, sep = " - "))
 
-firstMacro<-compInd[,c(1:34, length(compInd) )]
-View(firstMacro[1:10,])
+head(morador$ID)
 
-#' num do quadro = 71 primeiro dia, 72 seagundo dia.
-myData<-aggregate(x = firstMacro[,31:35] , by=list( firstMacro$COD_UF, firstMacro$ID, firstMacro$NUM_QUADRO), FUN="sum",  na.rm=TRUE)
-View(myData)
-require("ggplot2")
+#' merge somente idade sexo e ID
+moradorConsumo <- merge(x = compInd, y = morador[c("ID", "COD_SEXO", "IDADE_ANOS")], all.x = TRUE)
 
-qplot( y = myData$ENERGIA..kcal., x=paste(myData$Group.1,myData$Group.3, sep = ", dia "),
- geom = "boxplot", main="Energia", ylab="Kcal")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+names(moradorConsumo)
+head(moradorConsumo)
 
-qplot( y = myData$PROTEêNA..g., x=paste(myData$Group.1,myData$Group.3, sep = ", dia "),
-       geom = "boxplot", main="Proteína", ylab="g")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#' num do quadro = 71 para primeiro dia, 72 para seagundo dia.
+moradorConsumoPorDia<-aggregate(x = moradorConsumo[,32:68] , by=list( moradorConsumo$COD_UF, 
+  moradorConsumo$ID, moradorConsumo$NUM_QUADRO), FUN="sum",  na.rm=TRUE)
 
-qplot( y = myData$LIPêDEOS.TOTAIS..g., x=paste(myData$Group.1,myData$Group.3, sep = ", dia "),
-       geom = "boxplot", main="Lipídeos", ylab="g")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#' merge novamente somente idade sexo e ID (tenho que concertar isso mais tarde)
+moradorConsumoPorDia <- merge(x = moradorConsumoPorDia, y = morador[c("ID", "COD_SEXO", "IDADE_ANOS")],
+  by.x = "Group.2", by.y = "ID", all.x = TRUE)
 
-qplot( y = myData$CARBOIDRATO..g., x=paste(myData$Group.1,myData$Group.3, sep = ", dia "),
-       geom = "boxplot", main = "Carboidratos", ylab="g")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#' substituir COD_UF pelo rótulo
+moradorConsumoPorDia$Group.1<-apply(moradorConsumoPorDia, 1 , function(aa) {
+  rotulos$COD_UF$rotulo[match (aa["Group.1"], rotulos$COD_UF$valor)]
+})
+moradorConsumoPorDia$Group.1<-as.factor(moradorConsumoPorDia$Group.1)
+moradorConsumoPorDia$classIDADE_ANOS<-cut(x = moradorConsumoPorDia$IDADE_ANOS, breaks = c(18, 30, 50, 70, Inf))
 
-hist(myData$CARBOIDRATO..g.)
+#' consumo por estado
+moradorConsumoPorDiaAgregado<-apply(moradorConsumoPorDia[4:(length(moradorConsumoPorDia)-3)], MARGIN = (2),
+  FUN = function(a) {
+    aggregate(a ~ COD_SEXO + Group.1 + classIDADE_ANOS, data = moradorConsumoPorDia, FUN= "mean" )
+  })
+
+
+#' change labels to match intake data
+levels(datasusEstFem$Doenças..Faixas.Etárias.DRI)
+levels(moradorConsumoPorDiaAgregado$ENERGIA..kcal.$classIDADE_ANOS)
+levels(datasusEstFem$Doenças..Faixas.Etárias.DRI)<-c ("(70,Inf]" , "(18,30]" , "(30,50]" , "(50,70]" , NA)
+levels(datasusEstMas$Doenças..Faixas.Etárias.DRI)<-c ("(70,Inf]" , "(18,30]" , "(30,50]" , "(50,70]" , NA)
+levels(datasusEstFem$estado)<-levels(moradorConsumoPorDia$Group.1)
+levels(datasusEstMas$estado)<-levels(moradorConsumoPorDia$Group.1)
+
+#' #### 8 Média de consumo por estado, sexo, faixa etária
+moradorConsumoPorDiaAgregado
