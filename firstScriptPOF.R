@@ -126,5 +126,80 @@ levels(datasusEstMas$Doenças..Faixas.Etárias.DRI)<-c ("(70,Inf]" , "(18,30]" ,
 levels(datasusEstFem$estado)<-levels(moradorConsumoPorDia$Group.1)
 levels(datasusEstMas$estado)<-levels(moradorConsumoPorDia$Group.1)
 
+## ---- last piece of code. Heavy one.
 #' #### 8 Média de consumo por estado, sexo, faixa etária
-moradorConsumoPorDiaAgregado
+#moradorConsumoPorDiaAgregado
+moradorConsumoPorDiaAgregado<-lapply(moradorConsumoPorDiaAgregado, function(a){
+  split(a,a$COD_SEXO)
+})
+#View(moradorConsumoPorDiaAgregado)
+# COD_SEX = 1 para homens e 2 para mulheres
+moradorConsumoPorDiaAgregadoFem<-lapply(moradorConsumoPorDiaAgregado , function(a){
+  merge(x=a$`2`, y=datasusEstFem, by.x = c("Group.1", "classIDADE_ANOS"),
+    by.y=c("estado", "Doenças..Faixas.Etárias.DRI"))
+    })
+moradorConsumoPorDiaAgregadoMas<-lapply(moradorConsumoPorDiaAgregado , function(a){
+  merge(x=a$`1`, y=datasusEstMas, by.x = c("Group.1", "classIDADE_ANOS"),
+        by.y=c("estado", "Doenças..Faixas.Etárias.DRI"))
+})
+
+moradorConsumoPorDiaAgregadoFem<- lapply(moradorConsumoPorDiaAgregadoFem, function (a){
+  split(a, a$classIDADE_ANOS)
+})
+
+moradorConsumoPorDiaAgregadoMas<- lapply(moradorConsumoPorDiaAgregadoMas, function (a){
+  split(a, a$classIDADE_ANOS)
+})
+
+
+library("Hmisc")
+correlacoesFem <- lapply(moradorConsumoPorDiaAgregadoFem, function(g) {
+  lapply(g, function(a) {
+    rcorr(as.matrix(a[4:length(a)]))
+  })
+})
+correlacoesMas <- lapply(moradorConsumoPorDiaAgregadoMas, function(g) {
+  lapply(g, function(a) {
+    rcorr(as.matrix(a[4:length(a)]))
+  })
+})
+
+correlacoesFem
+correlacoesMas
+
+#View(correlacoesFem$ENERGIA..kcal.$`(18,30]`$P[1,])
+
+correlacoesFem<-lapply(correlacoesFem, function(g){
+  lapply(g, function(a){
+    lapply(a, function(i){
+      i[1,]
+    })
+  })
+})
+
+correlacoesMas<-lapply(correlacoesMas, function(g){
+  lapply(g, function(a){
+    lapply(a, function(i){
+      i[1,]
+    })
+  })
+})
+
+
+correlacoesFem
+correlacoesMas
+
+write.csv(x = as.data.frame(correlacoesFem), file = "correlacoesFem.csv")
+write.csv(x = as.data.frame(correlacoesMas), file = "correlacoesMas.csv")
+
+library("VIM")
+matrixplot(correlacoesFem)
+lala<-na.omit(as.data.frame(correlacoesFem))
+lelep<-seq(from = 3, by = 3, to = length(lala))
+leler<-seq(from = 1, by = 3, to = length(lala))
+View(as.matrix(lala[,lele])) 
+matrixplot(as.matrix(lala[,lele]), )
+heatmap(as.matrix(lala[,lelep]), na.rm = FALSE,margins = c(15,15))
+heatmap(as.matrix(lala[,leler]), na.rm = FALSE,margins = c(15,15))
+matrixplot(as.matrix(lala[,leler]), na.rm = FALSE,margins = c(15,15))
+matrix
